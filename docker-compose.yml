@@ -1,0 +1,13 @@
+version: "3.9"
+services:
+  boardroom-attendance-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: boardroom-attendance-app
+    entrypoint: /bin/bash
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/var/www/html/app
+    tty: true
