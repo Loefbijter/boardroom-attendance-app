@@ -4,7 +4,9 @@ import DisplayText from "./components/DisplayText.vue";
 
 <template>
     <v-app>
-        <DisplayText></DisplayText>
+        <v-container fluid id="main-container">
+            <DisplayText></DisplayText>
+        </v-container>
     </v-app>
 </template>
 
@@ -23,6 +25,11 @@ header {
     display: flex;
     place-items: flex-start;
     flex-wrap: wrap;
+  }
+
+  #main-container{
+      display: flex;
+      justify-content: center;
   }
 }
 </style>

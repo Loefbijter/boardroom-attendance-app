@@ -1,91 +1,97 @@
 <template>
-    <div class="d-flex justify-center ma-4">
-        <div v-if="available === true">
+    <v-row id="main-row">
+        <v-col v-if="available === true">
             <v-img
-                :width="600"
                 aspect-ratio="1"
                 cover
                 src="https://s3.eu-central-1.amazonaws.com/images.loefbijter.nl/bk-app/lol.jpg"
             ></v-img>
-            <v-card height="500" width="600">
-                <v-card-title class="text-wrap">Aanwezig</v-card-title>
-                <v-card-subtitle>Your data is ready</v-card-subtitle>
+            <v-card height="200">
+                <v-card-title class="text-wrap">Wij zijn momenteel aanwezig!</v-card-title>
+                <v-card-subtitle>:D</v-card-subtitle>
             </v-card>
-        </div>
-        <div v-else-if="available === false">
+        </v-col>
+        <v-col v-else-if="available === false">
             <v-img
-                :width="600"
                 aspect-ratio="1"
                 cover
                 src="https://s3.eu-central-1.amazonaws.com/images.loefbijter.nl/bk-app/sad.jpg"
             ></v-img>
-            <v-card height="500" width="600">
-                <v-card-title class="text-wrap">Niet aanwezig</v-card-title>
-                <v-card-subtitle>Your data is ready</v-card-subtitle>
+            <v-card height="200">
+                <v-card-title class="text-wrap">Wij zijn vandaag niet aanwezig..</v-card-title>
+                <v-card-subtitle>en hebben ook geen planning wanneer :(</v-card-subtitle>
             </v-card>
-        </div>
-        <div v-else>
-            <v-img
-                :width="600"
-                aspect-ratio="1"
-                cover
-                src="https://s3.eu-central-1.amazonaws.com/images.loefbijter.nl/bk-app/happy.jpg"
-            ></v-img>
-            <v-card height="500" width="600">
-                <v-card-title class="text-wrap">Weer aanwezig tussen {{availableWhenStart}} en {{availableWhenEnd}}</v-card-title>
-                <v-card-subtitle>Jeej!</v-card-subtitle>
-            </v-card>
-        </div>
-    </div>
+        </v-col>
+        <v-col v-else >
+                <v-img
+                    aspect-ratio="1"
+                    cover
+                    src="https://s3.eu-central-1.amazonaws.com/images.loefbijter.nl/bk-app/happy.jpg"
+                ></v-img>
+                <v-card height="200" d-flex align-center justify-center>
+                    <v-card-title class="text-wrap">We zijn weer aanwezig tussen {{startText}} en {{endText}}</v-card-title>
+                    <v-card-subtitle>:)</v-card-subtitle>
+                </v-card>
+        </v-col>
+    </v-row>
 </template>
 
 <script>
-import json from '../assets/data.json'
+import {GET_AVAILABILITY, SET_AVAILABILITY} from "../store/storeconstants";
+
 export default {
     name: "DisplayText",
-    data(){
-        return{
-            data: json,
-            happy: import.meta.glob('../assets/images/happy.jpg'),
-            sad: import.meta.glob('../assets/images/sad.jpg')
-        }
+    data: function () {
+        return {
+            startText: "",
+            endText: "",
+            available: this.$store.getters[`availability/${GET_AVAILABILITY}`]
+        };
     },
-    computed: {
-        available(){
-            return this.checkIfBoardAvailable()
-        },
-        availableWhenStart(){
-            return this.checkIfBoardAvailable()[0]
-        },
-        availableWhenEnd(){
-            return this.checkIfBoardAvailable()[1]
-        }
+    beforeMount() {
+        this.checkIfBoardAvailable()
     },
     methods: {
-        checkIfBoardAvailable(){
-            const datetime = this.toDateTime()
+        async getShiftsFromS3(){
+            const response = await this.axios.get("https://s3.eu-central-1.amazonaws.com/images.loefbijter.nl/bk-app/bkdienst.json");
+            const shifts = response.data
 
-            this.datetime_start = datetime['start']
-            this.datetime_end = datetime['end']
+            console.log(shifts)
+            return shifts
+        },
 
-            this.currDatetime = new Date().toLocaleString('nl-NL', {timeZone: 'Europe/Amsterdam'});
+        async checkIfBoardAvailable(){
+            console.log("checking board available")
+            const datetime = await this.toDateTime()
 
-            if (this.checkIfCurrShift()){
-                return true
+            const datetime_start = datetime['start']
+            const datetime_end = datetime['end']
+
+            const currDatetime = new Date().toLocaleString('nl-NL', {timeZone: 'Europe/Amsterdam'});
+
+            if (this.checkIfCurrShift(datetime_start, datetime_end, currDatetime)){
+                console.log("current shift")
+                this.$store.commit(`availability/${SET_AVAILABILITY}`, true);
             }
-            else if (this.checkIfNextShift() != null){
-                const nextShiftIdx = this.checkIfNextShift()
-                return [this.datetime_start[nextShiftIdx], this.datetime_end[nextShiftIdx]]
+            else if (this.checkIfNextShift(datetime_start, datetime_end, currDatetime) != null){
+                console.log("next shift")
+                const nextShiftIdx = this.checkIfNextShift(datetime_start, datetime_end, currDatetime)
+                this.$store.commit(`availability/${SET_AVAILABILITY}`, false);
+
+                this.startText = datetime_start[nextShiftIdx]
+                this.endText = datetime_end[nextShiftIdx]
             }
             else{
-                return false
+                console.log("no shifts")
+                this.$store.commit(`availability/${SET_AVAILABILITY}`, false);
             }
         },
-        toDateTime(){
+        async toDateTime() {
+            console.log("to datetime")
             const arr_datetime_start = []
             const arr_datetime_end = []
 
-            for (const [key, value] of Object.entries(this.data)) {
+            for (const [key, value] of Object.entries(await this.getShiftsFromS3())) {
                 const datetime_start = new Date(value.date_year + "-" + value.date_month + "-" + value.date_day + " " + value.time_start).toLocaleString('nl-NL', {timeZone: 'Europe/Amsterdam'});
                 const datetime_end = new Date(value.date_year + "-" + value.date_month + "-" + value.date_day + " " + value.time_end).toLocaleString('nl-NL', {timeZone: 'Europe/Amsterdam'});
 
@@ -98,21 +104,20 @@ export default {
                 'end': arr_datetime_end
             }
         },
-        checkIfCurrShift(){
+        checkIfCurrShift(datetime_start, datetime_end, currDatetime){
             let isCurrent = null
-
-            for (let i in this.datetime_start){
-                isCurrent = this.currDatetime > this.datetime_start[i] && this.currDatetime < this.datetime_end[i];
+            for (let i in datetime_start){
+                isCurrent = currDatetime > datetime_start[i] && currDatetime < datetime_end[i];
                 if (isCurrent){
                     return isCurrent
                 }
             }
             return isCurrent
         },
-        checkIfNextShift(){
+        checkIfNextShift(datetime_start, datetime_end, currDatetime){
             let nextShiftIdx = null
-            for (let i in this.datetime_start){
-                if (this.currDatetime < this.datetime_start[i]){
+            for (let i in datetime_start){
+                if (currDatetime < datetime_start[i]){
                     nextShiftIdx = i
                     break
                 }
@@ -124,5 +129,7 @@ export default {
 </script>
 
 <style scoped>
-
+#main-row{
+    max-width: 600px;
+}
 </style>
