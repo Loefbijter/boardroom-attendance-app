@@ -76,7 +76,7 @@ export default {
             else if (this.checkIfNextShift(datetime_start, datetime_end, currDatetime) != null){
                 console.log("next shift")
                 const nextShiftIdx = this.checkIfNextShift(datetime_start, datetime_end, currDatetime)
-                this.$store.commit(`availability/${SET_AVAILABILITY}`, false);
+                this.$store.commit(`availability/${SET_AVAILABILITY}`, nextShiftIdx);
 
                 this.startText = datetime_start[nextShiftIdx]
                 this.endText = datetime_end[nextShiftIdx]
