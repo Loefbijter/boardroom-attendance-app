@@ -1,14 +1,14 @@
 <template>
-    <v-row id="main-row">
+    <v-row id="main-row" :key="available">
         <v-col v-if="available === true">
             <v-img
                 aspect-ratio="1"
                 cover
-                src="https://s3.eu-central-1.amazonaws.com/images.loefbijter.nl/bk-app/lol.jpg"
+                src="https://s3.eu-central-1.amazonaws.com/images.loefbijter.nl/bk-app/happy.jpg"
             ></v-img>
             <v-card height="200">
-                <v-card-title class="text-wrap">Wij zijn momenteel aanwezig!</v-card-title>
-                <v-card-subtitle>:D</v-card-subtitle>
+                <v-card-title class="text-wrap">Wij zijn vandaag aanwezig tot {{startText}}!</v-card-title>
+                <v-card-subtitle v-for="member in members">{{ member }}</v-card-subtitle>
             </v-card>
         </v-col>
         <v-col v-else-if="available === false">
@@ -26,10 +26,11 @@
                 <v-img
                     aspect-ratio="1"
                     cover
-                    src="https://s3.eu-central-1.amazonaws.com/images.loefbijter.nl/bk-app/happy.jpg"
+                    src="https://s3.eu-central-1.amazonaws.com/images.loefbijter.nl/bk-app/excited.jpg"
                 ></v-img>
                 <v-card height="200" d-flex align-center justify-center>
-                    <v-card-title class="text-wrap">We zijn weer aanwezig tussen {{startText}} en {{endText}}</v-card-title>
+                    <v-card-title class="text-wrap">We zijn er nu niet.. <br>
+                        Je vind ons weer op {{startText}} en {{endText}}</v-card-title>
                     <v-card-subtitle>:)</v-card-subtitle>
                 </v-card>
         </v-col>
@@ -38,6 +39,7 @@
 
 <script>
 import {GET_AVAILABILITY, SET_AVAILABILITY} from "../store/storeconstants";
+import moment from 'moment-with-locales-es6';
 
 export default {
     name: "DisplayText",
@@ -45,7 +47,8 @@ export default {
         return {
             startText: "",
             endText: "",
-            available: this.$store.getters[`availability/${GET_AVAILABILITY}`]
+            available: this.$store.getters[`availability/${GET_AVAILABILITY}`],
+            members: null
         };
     },
     beforeMount() {
@@ -53,55 +56,83 @@ export default {
     },
     methods: {
         async getShiftsFromS3(){
-            const response = await this.axios.get("https://s3.eu-central-1.amazonaws.com/images.loefbijter.nl/bk-app/bkdienst.json");
+            const response = await this.axios.get("https://docs.google.com/spreadsheets/d/1fKUB7j8O9so2ueUkkyaVQYvQiCw13swBJ4IIev3JzM8/gviz/tq?tqx=out:csv");
             const shifts = response.data
 
-            console.log(shifts)
-            return shifts
+            const lines = shifts.split('\n') // 1️⃣
+            const header = lines[0].replace(/['"]+/g, '').split(',') // 2️⃣
+            const output = lines.slice(1).map(line => {
+                const fields = line.replace(/['"]+/g, '').split(',') // 3️⃣
+                return Object.fromEntries(header.map((h, i) => [h, fields[i]])) // 4️⃣
+            })
+
+            console.log(output)
+
+            return output
         },
 
         async checkIfBoardAvailable(){
-            console.log("checking board available")
-            const datetime = await this.toDateTime()
+            const entries = await this.constructEntries()
 
-            const datetime_start = datetime['start']
-            const datetime_end = datetime['end']
+            const datetime_start = entries['start']
+            const datetime_end = entries['end']
+            const availabilities = entries['available']
+
+            console.log(availabilities)
 
             const currDatetime = new Date().toLocaleString('nl-NL', {timeZone: 'Europe/Amsterdam'});
 
-            if (this.checkIfCurrShift(datetime_start, datetime_end, currDatetime)){
-                console.log("current shift")
-                this.$store.commit(`availability/${SET_AVAILABILITY}`, true);
-            }
-            else if (this.checkIfNextShift(datetime_start, datetime_end, currDatetime) != null){
-                console.log("next shift")
-                const nextShiftIdx = this.checkIfNextShift(datetime_start, datetime_end, currDatetime)
-                this.$store.commit(`availability/${SET_AVAILABILITY}`, nextShiftIdx);
+            const currShift = this.checkIfCurrShift(datetime_start, datetime_end, currDatetime);
+            const nextShift = this.checkIfNextShift(datetime_start, datetime_end, currDatetime);
+            let available = null
 
-                this.startText = datetime_start[nextShiftIdx]
-                this.endText = datetime_end[nextShiftIdx]
+            if (currShift){
+                this.$store.commit(`availability/${SET_AVAILABILITY}`, true);
+                this.available = true
+
+                this.startText = moment(datetime_end[currShift], 'DD-MM-YYYY HH:ss').format('HH:ss');
+                this.members = this.checkWhichMembersAvailable(availabilities[currShift])
+            }
+            else if (nextShift != null){
+                this.$store.commit(`availability/${SET_AVAILABILITY}`, nextShift);
+                this.available = nextShift
+
+                this.startText = moment(datetime_start[nextShift], 'DD-MM-YYYY HH:ss').format('dddd DD MMMM [tussen] HH:ss');
+                this.endText = moment(datetime_end[nextShift], 'DD-MM-YYYY HH:ss').format('HH:ss');
             }
             else{
-                console.log("no shifts")
                 this.$store.commit(`availability/${SET_AVAILABILITY}`, false);
+                this.available = false
             }
         },
-        async toDateTime() {
-            console.log("to datetime")
+        async constructEntries() {
+            moment.locale('nl');
+
             const arr_datetime_start = []
             const arr_datetime_end = []
 
+            const arr_availabilities = []
+
             for (const [key, value] of Object.entries(await this.getShiftsFromS3())) {
-                const datetime_start = new Date(value.date_year + "-" + value.date_month + "-" + value.date_day + " " + value.time_start).toLocaleString('nl-NL', {timeZone: 'Europe/Amsterdam'});
-                const datetime_end = new Date(value.date_year + "-" + value.date_month + "-" + value.date_day + " " + value.time_end).toLocaleString('nl-NL', {timeZone: 'Europe/Amsterdam'});
+                const datetime_start = moment(value.Datum + " " + value.Begin, 'DD-MM-YYYY HH:ss').format('DD-MM-YYYY HH:ss');
+                const datetime_end = moment(value.Datum + " " + value.Eind, 'DD-MM-YYYY HH:ss').format('DD-MM-YYYY HH:ss');
+                const availabilities = {
+                    "Noëlle": value.Noëlle,
+                    "Sebastiaan": value.Sebastiaan,
+                    "Freek": value.Freek,
+                    "Roel": value.Roel,
+                    "Jort": value.Jort
+                }
 
                 arr_datetime_start.push(datetime_start)
                 arr_datetime_end.push(datetime_end)
+                arr_availabilities.push(availabilities)
             }
 
             return {
                 'start': arr_datetime_start,
-                'end': arr_datetime_end
+                'end': arr_datetime_end,
+                'available': arr_availabilities
             }
         },
         checkIfCurrShift(datetime_start, datetime_end, currDatetime){
@@ -109,7 +140,7 @@ export default {
             for (let i in datetime_start){
                 isCurrent = currDatetime > datetime_start[i] && currDatetime < datetime_end[i];
                 if (isCurrent){
-                    return isCurrent
+                    return i
                 }
             }
             return isCurrent
@@ -123,6 +154,16 @@ export default {
                 }
             }
             return nextShiftIdx
+        },
+        checkWhichMembersAvailable(availabilities){
+            let arr_availabilities = []
+            for (const [key, value] of Object.entries(availabilities)) {
+                if (value === 'TRUE'){
+                    arr_availabilities.push(key)
+                }
+            }
+            console.log(arr_availabilities)
+            return arr_availabilities
         }
     }
 }
