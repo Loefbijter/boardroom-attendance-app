@@ -31,7 +31,7 @@
                 <v-card height="200" d-flex align-center justify-center>
                     <v-card-title class="text-wrap">We zijn er nu niet.. <br>
                         Je vind ons weer op {{startText}} en {{endText}}</v-card-title>
-                    <v-card-subtitle>:)</v-card-subtitle>
+                    <v-card-subtitle>{{ remarks }}</v-card-subtitle>
                 </v-card>
         </v-col>
     </v-row>
@@ -48,7 +48,8 @@ export default {
             startText: "",
             endText: "",
             available: this.$store.getters[`availability/${GET_AVAILABILITY}`],
-            members: null
+            members: null,
+            remarks: null
         };
     },
     beforeMount() {
@@ -80,7 +81,7 @@ export default {
 
             console.log(availabilities)
 
-            const currDatetime = new Date().toLocaleString('nl-NL', {timeZone: 'Europe/Amsterdam'});
+            const currDatetime = moment(new Date(), 'DD-MM-YYYY HH:ss').format('DD-MM-YYYY HH:ss')
 
             const currShift = this.checkIfCurrShift(datetime_start, datetime_end, currDatetime);
             const nextShift = this.checkIfNextShift(datetime_start, datetime_end, currDatetime);
@@ -112,6 +113,7 @@ export default {
             const arr_datetime_end = []
 
             const arr_availabilities = []
+            const arr_remarks = []
 
             for (const [key, value] of Object.entries(await this.getShiftsFromS3())) {
                 const datetime_start = moment(value.Datum + " " + value.Begin, 'DD-MM-YYYY HH:ss').format('DD-MM-YYYY HH:ss');
