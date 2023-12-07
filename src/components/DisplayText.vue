@@ -56,7 +56,7 @@ export default {
         this.checkIfBoardAvailable()
     },
     methods: {
-        async getShiftsFromS3(){
+        async getShiftsFromDrive(){
             const response = await this.axios.get("https://docs.google.com/spreadsheets/d/1fKUB7j8O9so2ueUkkyaVQYvQiCw13swBJ4IIev3JzM8/gviz/tq?tqx=out:csv");
             const shifts = response.data
 
@@ -66,8 +66,6 @@ export default {
                 const fields = line.replace(/['"]+/g, '').split(',') // 3️⃣
                 return Object.fromEntries(header.map((h, i) => [h, fields[i]])) // 4️⃣
             })
-
-            console.log(output)
 
             return output
         },
@@ -79,15 +77,14 @@ export default {
             const datetime_end = entries['end']
             const availabilities = entries['available']
 
-            console.log(availabilities)
-
-            const currDatetime = moment(new Date(), 'DD-MM-YYYY HH:ss').format('DD-MM-YYYY HH:ss')
+            const currDatetime = moment(new Date(), 'DD-MM-YYYY HH:ss')
 
             const currShift = this.checkIfCurrShift(datetime_start, datetime_end, currDatetime);
             const nextShift = this.checkIfNextShift(datetime_start, datetime_end, currDatetime);
             let available = null
 
             if (currShift){
+                console.log("Current shift")
                 this.$store.commit(`availability/${SET_AVAILABILITY}`, true);
                 this.available = true
 
@@ -95,6 +92,7 @@ export default {
                 this.members = this.checkWhichMembersAvailable(availabilities[currShift])
             }
             else if (nextShift != null){
+                console.log("Next shift")
                 this.$store.commit(`availability/${SET_AVAILABILITY}`, nextShift);
                 this.available = nextShift
 
@@ -102,6 +100,7 @@ export default {
                 this.endText = moment(datetime_end[nextShift], 'DD-MM-YYYY HH:ss').format('HH:ss');
             }
             else{
+                console.log("Not available")
                 this.$store.commit(`availability/${SET_AVAILABILITY}`, false);
                 this.available = false
             }
@@ -115,9 +114,9 @@ export default {
             const arr_availabilities = []
             const arr_remarks = []
 
-            for (const [key, value] of Object.entries(await this.getShiftsFromS3())) {
-                const datetime_start = moment(value.Datum + " " + value.Begin, 'DD-MM-YYYY HH:ss').format('DD-MM-YYYY HH:ss');
-                const datetime_end = moment(value.Datum + " " + value.Eind, 'DD-MM-YYYY HH:ss').format('DD-MM-YYYY HH:ss');
+            for (const [key, value] of Object.entries(await this.getShiftsFromDrive())) {
+                const datetime_start = moment(value.Datum + " " + value.Begin, 'DD-MM-YYYY HH:ss');
+                const datetime_end = moment(value.Datum + " " + value.Eind, 'DD-MM-YYYY HH:ss');
                 const availabilities = {
                     "Noëlle": value.Noëlle,
                     "Sebastiaan": value.Sebastiaan,
