@@ -8,6 +8,7 @@
             ></v-img>
             <v-card height="200">
                 <v-card-title class="text-wrap">Wij zijn vandaag aanwezig tot {{startText}}!</v-card-title>
+                <v-card-title class="text-wrap">Locatie: {{location}}</v-card-title>
                 <v-card-subtitle v-for="member in members">{{ member }}</v-card-subtitle>
             </v-card>
         </v-col>
@@ -30,7 +31,8 @@
                 ></v-img>
                 <v-card height="200" d-flex align-center justify-center>
                     <v-card-title class="text-wrap">We zijn er nu niet.. <br>
-                        Je vind ons weer op {{startText}} en {{endText}}</v-card-title>
+                        Je vindt ons weer op {{startText}} en {{endText}}</v-card-title>
+                    <v-card-title class="text-wrap">Waar? {{location}}!</v-card-title>
                     <v-card-subtitle>{{ remarks }}</v-card-subtitle>
                 </v-card>
         </v-col>
@@ -49,7 +51,8 @@ export default {
             endText: "",
             available: this.$store.getters[`availability/${GET_AVAILABILITY}`],
             members: null,
-            remarks: null
+            remarks: null,
+            location: null
         };
     },
     beforeMount() {
@@ -76,6 +79,7 @@ export default {
             const datetime_start = entries['start']
             const datetime_end = entries['end']
             const availabilities = entries['available']
+            const locations = entries['location']
 
             const currDatetime = moment(new Date(), 'DD-MM-YYYY HH:ss')
 
@@ -89,7 +93,8 @@ export default {
                 this.available = true
 
                 this.startText = moment(datetime_end[currShift], 'DD-MM-YYYY HH:ss').format('HH:ss');
-                this.members = this.checkWhichMembersAvailable(availabilities[currShift])
+                this.members = this.checkWhichMembersAvailable(availabilities[currShift]);
+                this.location = locations[currShift];
             }
             else if (nextShift != null){
                 console.log("Next shift")
@@ -98,6 +103,7 @@ export default {
 
                 this.startText = moment(datetime_start[nextShift], 'DD-MM-YYYY HH:ss').format('dddd DD MMMM [tussen] HH:ss');
                 this.endText = moment(datetime_end[nextShift], 'DD-MM-YYYY HH:ss').format('HH:ss');
+                this.location = locations[nextShift];
             }
             else{
                 console.log("Not available")
@@ -113,6 +119,7 @@ export default {
 
             const arr_availabilities = []
             const arr_remarks = []
+            const arr_locations = []
 
             for (const [key, value] of Object.entries(await this.getShiftsFromDrive())) {
                 const datetime_start = moment(value.Datum + " " + value.Begin, 'DD-MM-YYYY HH:ss');
@@ -124,16 +131,19 @@ export default {
                     "Roel": value.Roel,
                     "Jort": value.Jort
                 }
+                const location = value.Locatie
 
                 arr_datetime_start.push(datetime_start)
                 arr_datetime_end.push(datetime_end)
                 arr_availabilities.push(availabilities)
+                arr_locations.push(location)
             }
 
             return {
                 'start': arr_datetime_start,
                 'end': arr_datetime_end,
-                'available': arr_availabilities
+                'available': arr_availabilities,
+                'location': arr_locations
             }
         },
         checkIfCurrShift(datetime_start, datetime_end, currDatetime){
@@ -165,7 +175,7 @@ export default {
             }
             console.log(arr_availabilities)
             return arr_availabilities
-        }
+        },
     }
 }
 </script>
