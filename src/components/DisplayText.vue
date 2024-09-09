@@ -60,7 +60,7 @@ export default {
     },
     methods: {
         async getShiftsFromDrive(){
-            const response = await this.axios.get("https://docs.google.com/spreadsheets/d/1fKUB7j8O9so2ueUkkyaVQYvQiCw13swBJ4IIev3JzM8/gviz/tq?tqx=out:csv");
+            const response = await this.axios.get("https://docs.google.com/spreadsheets/d/1qaoHdeh58VErMIXj-H28CLPONEDnIOX3/gviz/tq?tqx=out:csv");
             const shifts = response.data
 
             const lines = shifts.split('\n') // 1️⃣
@@ -81,8 +81,11 @@ export default {
             const availabilities = entries['available']
             const locations = entries['location']
 
-            const currDatetime = moment(new Date(), 'DD-MM-YYYY HH:ss')
+            const currDatetime = moment(new Date(), 'DD-MM-YYYY HH:mm')
 
+            console.log(datetime_start[0])
+            console.log(datetime_end[0])
+            console.log(currDatetime)
             const currShift = this.checkIfCurrShift(datetime_start, datetime_end, currDatetime);
             const nextShift = this.checkIfNextShift(datetime_start, datetime_end, currDatetime);
             let available = null
@@ -92,7 +95,7 @@ export default {
                 this.$store.commit(`availability/${SET_AVAILABILITY}`, true);
                 this.available = true
 
-                this.startText = moment(datetime_end[currShift], 'DD-MM-YYYY HH:ss').format('HH:ss');
+                this.startText = moment(datetime_end[currShift], 'DD-MM-YYYY HH:mm').format('HH:mm');
                 this.members = this.checkWhichMembersAvailable(availabilities[currShift]);
                 this.location = locations[currShift];
             }
@@ -101,8 +104,8 @@ export default {
                 this.$store.commit(`availability/${SET_AVAILABILITY}`, nextShift);
                 this.available = nextShift
 
-                this.startText = moment(datetime_start[nextShift], 'DD-MM-YYYY HH:ss').format('dddd DD MMMM [tussen] HH:ss');
-                this.endText = moment(datetime_end[nextShift], 'DD-MM-YYYY HH:ss').format('HH:ss');
+                this.startText = moment(datetime_start[nextShift], 'DD-MM-YYYY HH:mm').format('dddd DD MMMM [tussen] HH:mm');
+                this.endText = moment(datetime_end[nextShift], 'DD-MM-YYYY HH:mm').format('HH:mm');
                 this.location = locations[nextShift];
             }
             else{
@@ -122,14 +125,15 @@ export default {
             const arr_locations = []
 
             for (const [key, value] of Object.entries(await this.getShiftsFromDrive())) {
-                const datetime_start = moment(value.Datum + " " + value.Begin, 'DD-MM-YYYY HH:ss');
-                const datetime_end = moment(value.Datum + " " + value.Eind, 'DD-MM-YYYY HH:ss');
+                const datetime_start = moment(value.Datum + " " + value.Begin, 'DD-MM-YYYY HH:mm');
+                const datetime_end = moment(value.Datum + " " + value.Eind, 'DD-MM-YYYY HH:mm');
                 const availabilities = {
-                    "Noëlle": value.Noëlle,
-                    "Sebastiaan": value.Sebastiaan,
-                    "Freek": value.Freek,
-                    "Roel": value.Roel,
-                    "Jort": value.Jort
+                    "Sophie": value.Sophie,
+                    "Hannah": value.Hannah,
+                    "Levi": value.Levi,
+                    "Koen": value.Koen,
+                    "Nienke": value.Nienke,
+                    "Lieke": value.Lieke
                 }
                 const location = value.Locatie
 
