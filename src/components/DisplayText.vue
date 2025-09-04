@@ -128,12 +128,12 @@ export default {
                 const datetime_start = moment(value.Datum + " " + value.Begin, 'DD-MM-YYYY HH:mm');
                 const datetime_end = moment(value.Datum + " " + value.Eind, 'DD-MM-YYYY HH:mm');
                 const availabilities = {
-                    "Sophie": value.Sophie,
-                    "Hannah": value.Hannah,
-                    "Levi": value.Levi,
-                    "Koen": value.Koen,
-                    "Nienke": value.Nienke,
-                    "Lieke": value.Lieke
+                    "Thijs": value.Thijs,
+                    "Floor": value.Floor,
+                    "Viviëne": value.Viviëne,
+                    "Remi": value.Remi,
+                    "Robbert": value.Robbert,
+                    "Boris": value.Boris
                 }
                 const location = value.Locatie
 
